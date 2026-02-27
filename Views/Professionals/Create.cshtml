@@ -1,0 +1,65 @@
+@model MentalHealthSupport.Models.Professional
+
+@{
+    ViewData["Title"] = "Cadastrar Profissional";
+}
+
+<h2>@ViewData["Title"]</h2>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success">
+        @TempData["SuccessMessage"]
+    </div>
+}
+
+<form asp-action="Create" method="post">
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+    <div class="mb-3">
+        <label asp-for="Name" class="form-label"></label>
+        <input asp-for="Name" class="form-control" />
+        <span asp-validation-for="Name" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Specialty" class="form-label"></label>
+        <input asp-for="Specialty" class="form-control" />
+        <span asp-validation-for="Specialty" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Approach" class="form-label"></label>
+        <input asp-for="Approach" class="form-control" />
+        <span asp-validation-for="Approach" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="City" class="form-label"></label>
+        <input asp-for="City" class="form-control" />
+        <span asp-validation-for="City" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="ContactEmail" class="form-label"></label>
+        <input asp-for="ContactEmail" class="form-control" />
+        <span asp-validation-for="ContactEmail" class="text-danger"></span>
+    </div>
+
+    <div class="form-check mb-3">
+        <input asp-for="OnlineSessions" class="form-check-input" />
+        <label asp-for="OnlineSessions" class="form-check-label"></label>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="CrpOrCrm" class="form-label"></label>
+        <input asp-for="CrpOrCrm" class="form-control" />
+        <span asp-validation-for="CrpOrCrm" class="text-danger"></span>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Enviar</button>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
