@@ -21,14 +21,14 @@ public class ProfessionalsController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public IActionResult Create(Professional prof)
+    public async Task<IActionResult> Create(Professional prof)
     {
         if (!ModelState.IsValid)
         {
             return View(prof);
         }
 
-        _repository.AddProfessional(prof);
+        await _repository.AddProfessionalAsync(prof);
         TempData["SuccessMessage"] = "Obrigado pelo cadastro! Logo sua informação estará disponível para usuários.";
         // redirect to clear form
         return RedirectToAction(nameof(Create));

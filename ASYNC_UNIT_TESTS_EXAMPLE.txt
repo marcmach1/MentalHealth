@@ -1,0 +1,331 @@
+// Arquivo: Tests/RepositoryAsyncTests.cs
+// Adicione este arquivo ao seu projeto para testar requisições assincronas
+
+using MentalHealthSupport.Models;
+using MentalHealthSupport.Services;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+
+namespace MentalHealthSupport.Tests;
+
+[TestClass]
+public class InMemoryMentalHealthRepositoryAsyncTests
+{
+    private InMemoryMentalHealthRepository _repository = null!;
+
+    [TestInitialize]
+    public void Setup()
+    {
+        _repository = new InMemoryMentalHealthRepository();
+    }
+
+    #region Professional Tests
+
+    [TestMethod]
+    public async Task GetProfessionalsAsync_ShouldReturnInitialProfessionals()
+    {
+        // Arrange
+        // Repository já vem com 2 profissionais de exemplo
+
+        // Act
+        var result = await _repository.GetProfessionalsAsync();
+
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.AreEqual(2, result.Count);
+    }
+
+    [TestMethod]
+    public async Task GetProfessionalAsync_WithValidId_ShouldReturnProfessional()
+    {
+        // Arrange
+        int expectedId = 1;
+        string expectedName = "Ana Paula Souza";
+
+        // Act
+        var result = await _repository.GetProfessionalAsync(expectedId);
+
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.AreEqual(expectedId, result.Id);
+        Assert.AreEqual(expectedName, result.Name);
+    }
+
+    [TestMethod]
+    public async Task GetProfessionalAsync_WithInvalidId_ShouldReturnNull()
+    {
+        // Arrange
+        int invalidId = 999;
+
+        // Act
+        var result = await _repository.GetProfessionalAsync(invalidId);
+
+        // Assert
+        Assert.IsNull(result);
+    }
+
+    [TestMethod]
+    public async Task AddProfessionalAsync_ShouldAssignNewId()
+    {
+        // Arrange
+        var professional = new Professional
+        {
+            Name = "Dr. Silva",
+            Specialty = "Neuropsicologia",
+            Approach = "Abordagem humanista",
+            City = "Brasília",
+            ContactEmail = "silva@example.com",
+            OnlineSessions = true,
+            CrpOrCrm = "CRP 01/12345"
+        };
+
+        // Act
+        var result = await _repository.AddProfessionalAsync(professional);
+
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.IsTrue(result.Id > 0);
+        Assert.AreEqual(professional.Name, result.Name);
+    }
+
+    [TestMethod]
+    public async Task AddProfessionalAsync_MultipleAdds_ShouldGenerateUniqueIds()
+    {
+        // Arrange
+        var prof1 = new Professional { Name = "Prof 1" };
+        var prof2 = new Professional { Name = "Prof 2" };
+        var prof3 = new Professional { Name = "Prof 3" };
+
+        // Act
+        var result1 = await _repository.AddProfessionalAsync(prof1);
+        var result2 = await _repository.AddProfessionalAsync(prof2);
+        var result3 = await _repository.AddProfessionalAsync(prof3);
+
+        // Assert
+        Assert.AreNotEqual(result1.Id, result2.Id);
+        Assert.AreNotEqual(result2.Id, result3.Id);
+        Assert.AreNotEqual(result1.Id, result3.Id);
+        Assert.IsTrue(result1.Id < result2.Id && result2.Id < result3.Id);
+    }
+
+    #endregion
+
+    #region Support Request Tests
+
+    [TestMethod]
+    public async Task GetSupportRequestsAsync_InitiallyEmpty_ShouldReturnEmptyList()
+    {
+        // Arrange
+        // Repository começa com lista vazia de requests
+
+        // Act
+        var result = await _repository.GetSupportRequestsAsync();
+
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.AreEqual(0, result.Count);
+    }
+
+    [TestMethod]
+    public async Task AddSupportRequestAsync_ShouldAssignIdAndTimestamp()
+    {
+        // Arrange
+        var request = new SupportRequest
+        {
+            UserName = "João Silva",
+            Content = "Estou com ansiedade",
+            Email = "joao@example.com"
+        };
+        var beforeTime = DateTime.UtcNow;
+
+        // Act
+        var result = await _repository.AddSupportRequestAsync(request);
+        var afterTime = DateTime.UtcNow;
+
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.IsTrue(result.Id > 0);
+        Assert.IsTrue(result.CreatedAt >= beforeTime && result.CreatedAt <= afterTime);
+    }
+
+    [TestMethod]
+    public async Task GetSupportRequestsAsync_AfterAdding_ShouldReturnInReverseOrder()
+    {
+        // Arrange
+        var request1 = new SupportRequest { UserName = "User 1", Content = "Content 1", Email = "user1@example.com" };
+        var request2 = new SupportRequest { UserName = "User 2", Content = "Content 2", Email = "user2@example.com" };
+        var request3 = new SupportRequest { UserName = "User 3", Content = "Content 3", Email = "user3@example.com" };
+
+        await _repository.AddSupportRequestAsync(request1);
+        await Task.Delay(10); // Pequeno delay para garantir timestamps diferentes
+        await _repository.AddSupportRequestAsync(request2);
+        await Task.Delay(10);
+        await _repository.AddSupportRequestAsync(request3);
+
+        // Act
+        var result = await _repository.GetSupportRequestsAsync();
+
+        // Assert
+        Assert.AreEqual(3, result.Count);
+        var list = result.ToList();
+        Assert.AreEqual(request3.UserName, list[0].UserName); // Mais recente primeiro
+        Assert.AreEqual(request2.UserName, list[1].UserName);
+        Assert.AreEqual(request1.UserName, list[2].UserName); // Mais antigo último
+    }
+
+    #endregion
+
+    #region Concurrency Tests (Requisições paralelas)
+
+    [TestMethod]
+    public async Task AddProfessionalAsync_ConcurrentAdds_ShouldHandleParallelRequests()
+    {
+        // Arrange
+        var tasks = new List<Task<Professional>>();
+
+        // Act
+        for (int i = 0; i < 10; i++)
+        {
+            var prof = new Professional { Name = $"Prof {i}" };
+            tasks.Add(_repository.AddProfessionalAsync(prof));
+        }
+
+        var results = await Task.WhenAll(tasks);
+
+        // Assert
+        Assert.AreEqual(10, results.Length);
+        var ids = results.Select(r => r.Id).ToList();
+        var uniqueIds = ids.Distinct().ToList();
+        Assert.AreEqual(10, uniqueIds.Count); // Todos os IDs devem ser únicos
+    }
+
+    [TestMethod]
+    public async Task MixedOperations_ShouldWorkConcurrently()
+    {
+        // Arrange
+        var tasks = new List<Task>();
+
+        // Act
+        for (int i = 0; i < 5; i++)
+        {
+            tasks.Add(_repository.AddProfessionalAsync(new Professional { Name = $"Prof {i}" }));
+            tasks.Add(_repository.AddSupportRequestAsync(new SupportRequest { UserName = $"User {i}", Content = "Test", Email = $"user{i}@example.com" }));
+        }
+
+        await Task.WhenAll(tasks);
+
+        // Assert
+        var professionals = await _repository.GetProfessionalsAsync();
+        var requests = await _repository.GetSupportRequestsAsync();
+
+        Assert.IsTrue(professionals.Count >= 5); // Pelo menos os 5 que adicionamos
+        Assert.AreEqual(5, requests.Count);
+    }
+
+    #endregion
+
+    #region Performance Tests
+
+    [TestMethod]
+    public async Task GetProfessionalsAsync_ShouldCompleteQuickly()
+    {
+        // Arrange
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+        // Act
+        var result = await _repository.GetProfessionalsAsync();
+
+        stopwatch.Stop();
+
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.IsTrue(stopwatch.ElapsedMilliseconds < 100, $"Operação levou {stopwatch.ElapsedMilliseconds}ms");
+    }
+
+    [TestMethod]
+    public async Task Bulk_Operations_ShouldComplete()
+    {
+        // Arrange
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+        // Act
+        var tasks = new List<Task>();
+
+        // Adicionar 100 requests em paralelo
+        for (int i = 0; i < 100; i++)
+        {
+            var req = new SupportRequest
+            {
+                UserName = $"User {i}",
+                Content = $"Content {i}",
+                Email = $"user{i}@example.com"
+            };
+            tasks.Add(_repository.AddSupportRequestAsync(req));
+        }
+
+        await Task.WhenAll(tasks);
+
+        var requests = await _repository.GetSupportRequestsAsync();
+        stopwatch.Stop();
+
+        // Assert
+        Assert.AreEqual(100, requests.Count);
+        Assert.IsTrue(stopwatch.ElapsedMilliseconds < 500, $"Operação levou {stopwatch.ElapsedMilliseconds}ms");
+    }
+
+    #endregion
+}
+
+/// <summary>
+/// Testes de Integration com Controllers
+/// </summary>
+// Nota: Para testar controllers, você precisará do pacote:
+// dotnet add package Microsoft.AspNetCore.Mvc.Testing
+//
+// [TestClass]
+// public class SupportRequestsControllerAsyncTests
+// {
+//     private WebApplicationFactory<Program> _factory = null!;
+//     private HttpClient _client = null!;
+//
+//     [TestInitialize]
+//     public void Setup()
+//     {
+//         _factory = new WebApplicationFactory<Program>();
+//         _client = _factory.CreateClient();
+//     }
+//
+//     [TestCleanup]
+//     public void Cleanup()
+//     {
+//         _factory?.Dispose();
+//         _client?.Dispose();
+//     }
+//
+//     [TestMethod]
+//     public async Task GetAll_ShouldReturnOkStatus()
+//     {
+//         // Act
+//         var response = await _client.GetAsync(\"/api/supportrequests\");
+//
+//         // Assert
+//         Assert.AreEqual(System.Net.HttpStatusCode.OK, response.StatusCode);
+//     }
+//
+//     [TestMethod]
+//     public async Task Create_WithValidData_ShouldReturnCreated()
+//     {
+//         // Arrange
+//         var request = new SupportRequest
+//         {
+//             UserName = \"Test User\",
+//             Content = \"Test content\",
+//             Email = \"test@example.com\"
+//         };
+//
+//         // Act
+//         var response = await _client.PostAsJsonAsync(\"/api/supportrequests\", request);
+//
+//         // Assert
+//         Assert.AreEqual(System.Net.HttpStatusCode.Created, response.StatusCode);
+//     }
+// }

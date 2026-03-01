@@ -9,18 +9,21 @@ namespace MentalHealthSupport.Controllers;
 public class SupportRequestsApiController(IMentalHealthRepository repository) : ControllerBase
 {
     [HttpGet]
-    public ActionResult<IEnumerable<SupportRequest>> GetAll()
-        => Ok(repository.GetSupportRequests());
+    public async Task<ActionResult<IEnumerable<SupportRequest>>> GetAll()
+    {
+        var requests = await repository.GetSupportRequestsAsync();
+        return Ok(requests);
+    }
 
     [HttpPost]
-    public ActionResult<SupportRequest> Create([FromBody] SupportRequest request)
+    public async Task<ActionResult<SupportRequest>> Create([FromBody] SupportRequest request)
     {
         if (!ModelState.IsValid)
         {
             return ValidationProblem(ModelState);
         }
 
-        var created = repository.AddSupportRequest(request);
+        var created = await repository.AddSupportRequestAsync(request);
         return CreatedAtAction(nameof(GetAll), new { id = created.Id }, created);
     }
 }

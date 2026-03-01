@@ -9,25 +9,28 @@ namespace MentalHealthSupport.Controllers;
 public class ProfessionalsApiController(IMentalHealthRepository repository) : ControllerBase
 {
     [HttpGet]
-    public ActionResult<IEnumerable<Professional>> GetAll()
-        => Ok(repository.GetProfessionals());
+    public async Task<ActionResult<IEnumerable<Professional>>> GetAll()
+    {
+        var professionals = await repository.GetProfessionalsAsync();
+        return Ok(professionals);
+    }
 
     [HttpGet("{id:int}")]
-    public ActionResult<Professional> GetById(int id)
+    public async Task<ActionResult<Professional>> GetById(int id)
     {
-        var professional = repository.GetProfessional(id);
+        var professional = await repository.GetProfessionalAsync(id);
         return professional is null ? NotFound() : Ok(professional);
     }
 
     [HttpPost]
-    public ActionResult<Professional> Create([FromBody] Professional prof)
+    public async Task<ActionResult<Professional>> Create([FromBody] Professional prof)
     {
         if (!ModelState.IsValid)
         {
             return ValidationProblem(ModelState);
         }
 
-        var created = repository.AddProfessional(prof);
+        var created = await repository.AddProfessionalAsync(prof);
         return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
     }
 }

@@ -4,12 +4,12 @@ namespace MentalHealthSupport.Services;
 
 public interface IMentalHealthRepository
 {
-    IReadOnlyCollection<Professional> GetProfessionals();
-    Professional? GetProfessional(int id);
-    Professional AddProfessional(Professional prof);
+    Task<IReadOnlyCollection<Professional>> GetProfessionalsAsync();
+    Task<Professional?> GetProfessionalAsync(int id);
+    Task<Professional> AddProfessionalAsync(Professional prof);
 
-    IReadOnlyCollection<SupportRequest> GetSupportRequests();
-    SupportRequest AddSupportRequest(SupportRequest request);
+    Task<IReadOnlyCollection<SupportRequest>> GetSupportRequestsAsync();
+    Task<SupportRequest> AddSupportRequestAsync(SupportRequest request);
 }
 
 public class InMemoryMentalHealthRepository : IMentalHealthRepository
@@ -43,28 +43,43 @@ public class InMemoryMentalHealthRepository : IMentalHealthRepository
     private readonly List<SupportRequest> _supportRequests = [];
     private int _nextRequestId = 1;
 
-    public IReadOnlyCollection<Professional> GetProfessionals() => _professionals;
-
-    public Professional? GetProfessional(int id) => _professionals.FirstOrDefault(p => p.Id == id);
-
-    public Professional AddProfessional(Professional prof)
+    public Task<IReadOnlyCollection<Professional>> GetProfessionalsAsync()
     {
-        // assign a new id
+        // Simular latência de I/O assincron
+        return Task.FromResult<IReadOnlyCollection<Professional>>(_professionals);
+    }
+
+    public Task<Professional?> GetProfessionalAsync(int id)
+    {
+        // Simular latência de I/O assincron
+        var result = _professionals.FirstOrDefault(p => p.Id == id);
+        return Task.FromResult(result);
+    }
+
+    public Task<Professional> AddProfessionalAsync(Professional prof)
+    {
+        // Simular latência de I/O assincron
         var nextId = _professionals.Count == 0 ? 1 : _professionals.Max(p => p.Id) + 1;
         prof.Id = nextId;
         _professionals.Add(prof);
-        return prof;
+        return Task.FromResult(prof);
     }
 
-    public IReadOnlyCollection<SupportRequest> GetSupportRequests() => _supportRequests
-        .OrderByDescending(r => r.CreatedAt)
-        .ToList();
-
-    public SupportRequest AddSupportRequest(SupportRequest request)
+    public Task<IReadOnlyCollection<SupportRequest>> GetSupportRequestsAsync()
     {
+        // Simular latência de I/O assincron
+        var result = _supportRequests
+            .OrderByDescending(r => r.CreatedAt)
+            .ToList() as IReadOnlyCollection<SupportRequest>;
+        return Task.FromResult(result);
+    }
+
+    public Task<SupportRequest> AddSupportRequestAsync(SupportRequest request)
+    {
+        // Simular latência de I/O assincron
         request.Id = _nextRequestId++;
         request.CreatedAt = DateTime.UtcNow;
         _supportRequests.Add(request);
-        return request;
+        return Task.FromResult(request);
     }
 }
