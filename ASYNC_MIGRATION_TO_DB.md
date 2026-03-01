@@ -103,7 +103,7 @@ public class MentalHealthDbContext : DbContext
             new Professional
             {
                 Id = 2,
-                Name = "Marcos Lima",
+                Name = "Marcos Machado",
                 Specialty = "Psiquiatria",
                 Approach = "Acompanhamento medicamentoso integrado com psicoterapia.",
                 City = "Rio de Janeiro",
