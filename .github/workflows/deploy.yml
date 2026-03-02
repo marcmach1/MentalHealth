@@ -20,7 +20,7 @@ jobs:
         with:
           dotnet-version: '9.0.x'
 
-      # 3️⃣ Restaurar e publicar
+      # 3️⃣ Restaurar e publicar (Gera os arquivos na pasta ./publish local do runner)
       - name: Restore dependencies
         run: dotnet restore
 
@@ -28,6 +28,7 @@ jobs:
         run: dotnet publish -c Release -o ./publish
 
       # 4️⃣ Copiar arquivos para EC2
+      # O strip_components: 1 garante que o conteúdo de ./publish vá direto para o target
       - name: Copy files to EC2
         uses: appleboy/scp-action@v0.1.3
         with:
@@ -36,7 +37,9 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           source: "publish/*"
-          target: "/home/ubuntu/MentalHealth/bin/Release/net9.0/publish/"
+          target: "/home/ubuntu/MentalHealth/bin/Release/net9.0/publish"
+          strip_components: 1
+          overwrite: true
 
       # 5️⃣ Reiniciar o serviço na EC2
       - name: Restart mentalhealth service
@@ -46,6 +49,11 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            # Garante que o processo antigo morra e limpa configs do systemd
+            sudo pkill -9 dotnet || true
             sudo systemctl daemon-reload
             sudo systemctl restart mentalhealth
+            
+            # Aguarda 2 segundos e mostra o status para o log do GitHub
+            sleep 2
             sudo systemctl status mentalhealth --no-pager
