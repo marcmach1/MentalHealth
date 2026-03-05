@@ -4,12 +4,21 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllersWithViews();
 builder.Services.AddSingleton<MentalHealthSupport.Services.IMentalHealthRepository, MentalHealthSupport.Services.InMemoryMentalHealthRepository>();
 
-// Configurar OpenAI com type-safe options pattern
-builder.Services.Configure<MentalHealthSupport.Services.OpenAiOptions>(
-    builder.Configuration.GetSection("OpenAI"));
+// Escolher provedor de IA dinamicamente
+var provider = builder.Configuration["AiProvider"] ?? "OpenAI";
 
-// Registrar serviço de suporte com IA
-builder.Services.AddScoped<MentalHealthSupport.Services.IAiSupportService, MentalHealthSupport.Services.OpenAiSupportService>();
+if (provider.Equals("Google", StringComparison.OrdinalIgnoreCase))
+{
+    builder.Services.Configure<MentalHealthSupport.Services.GoogleOptions>(
+        builder.Configuration.GetSection("Google"));
+    builder.Services.AddScoped<MentalHealthSupport.Services.IAiSupportService, MentalHealthSupport.Services.GoogleGeminiSupportService>();
+}
+else
+{
+    builder.Services.Configure<MentalHealthSupport.Services.OpenAiOptions>(
+        builder.Configuration.GetSection("OpenAI"));
+    builder.Services.AddScoped<MentalHealthSupport.Services.IAiSupportService, MentalHealthSupport.Services.OpenAiSupportService>();
+}
 
 builder.Services.AddHttpClient();
 
